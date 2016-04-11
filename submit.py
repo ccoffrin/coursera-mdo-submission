@@ -3,9 +3,6 @@
 
 import urllib
 import urllib2
-import hashlib
-import email.message
-import email.encoders
 
 import json
 import time
@@ -18,10 +15,8 @@ process_id = os.getpid()
 submitt_url = 'https://www.coursera.org/api/onDemandProgrammingScriptSubmissions.v1'
 
 minizinc_cmd = 'mzn-gecode'
-#minizinc_cmd = 'minizinc'
 
 Metadata = namedtuple("Metadata", ['assignment_key', 'sid_login', 'name', 'problem_data', 'model_data'])
-
 Problem = namedtuple("Problem", ['sid', 'model_file', 'input_file', 'runtime', 'name'])
 Model = namedtuple("Model", ['sid', 'model_file', 'name'])
 
@@ -88,7 +83,7 @@ def submit(model_file_override=None, record_submission=False):
     
     (login, token) = login_prompt()
     if not login:
-        print('!! Submission Cancelled')
+        print('!! Submission Canceled')
         return
     
     print('\n== Connecting to Coursera ... ')
@@ -131,10 +126,10 @@ def submit(model_file_override=None, record_submission=False):
             submission_file.close()
 
         
-        (result, string) = submit_solution(metadata, login, token, model.sid, submission, '')
+        (code, string) = submit_solution(metadata, login, token, model.sid, submission, '')
         print('== %s \n\n' % string.strip())
 
-    
+
     for problem in selected_problems:
         if model_file_override != None:
             model_file = model_file_override
@@ -144,15 +139,11 @@ def submit(model_file_override=None, record_submission=False):
         if not os.path.isfile(model_file):
             print('Unable to locate assignment file "'+model_file+'" in the current working directory.')
             continue
-            
-        # (login, ch, state, ch_aux) = get_challenge(metadata.url, login, problem.sid)
-        # if not login or not ch or not state:
-        #     print('\n!! Error: %s\n' % login)
-        #     return
+
         submission = output(problem, model_file, record_submission)
 
         if submission != None:
-            (result, string) = submit_solution(metadata, login, token, problem.sid, submission, get_source(model_file))
+            (code, string) = submit_solution(metadata, login, token, problem.sid, submission, get_source(model_file))
             print('== %s \n\n' % string.strip())
 
 
@@ -220,14 +211,8 @@ def part_prompt(name, problems, models):
 def submit_solution(metadata, email_address, token, sid, output, source):
     """Submits a solution to the server. Returns (result, string)."""
     
-    problem_parts = {prob_data.sid : {} for prob_data in metadata.problem_data}
-    model_parts = {model_data.sid : {} for model_data in metadata.model_data}
+    # build json datastructure
     parts = {}
-    parts.update(problem_parts)
-    parts.update(model_parts)
-
-    parts[sid]["output"] = output
-
     submission = {
         "assignmentKey": metadata.assignment_key,  
         "submitterEmail": email_address,  
@@ -235,47 +220,33 @@ def submit_solution(metadata, email_address, token, sid, output, source):
         "parts": parts
     }
 
-    print("SUBMIT IT!")
-    print(output) 
+    parts.update({prob_data.sid : {} for prob_data in metadata.problem_data})
+    parts.update({model_data.sid : {} for model_data in metadata.model_data})
 
-    print("********")
-    data = json.dumps(submission)
-    print(data)
-    result = 0
-    string = "none!"
+    parts[sid]["output"] = output
 
+
+    # send submission
     req = urllib2.Request(submitt_url)
     req.add_header('Cache-Control', 'no-cache')
     req.add_header('Content-type', 'application/json')
-    # make the request and print the results
-    res = urllib2.urlopen(req, data)
-    print res.read()
+    res = urllib2.urlopen(req, json.dumps(submission))
+    code = res.getcode() 
+    responce = json.loads(res.read())
 
+    if code >= 200 and code <= 299:
+        return code, 'Your submission has been accepted and will be ' \
+                     'graded shortly.'
 
-    # source_64_msg = email.message.Message()
-    # source_64_msg.set_payload(source)
-    # email.encoders.encode_base64(source_64_msg)
+    if code >= 400 and code <= 499:
+        return code, responce['details']['learnerMessage']
 
-    # output_64_msg = email.message.Message()
-    # output_64_msg.set_payload(output)
-    # email.encoders.encode_base64(output_64_msg)
-    # values = { 
-    #     'assignment_part_sid': sid,
-    #     'email_address': email_address,
-    #     # 'submission' : output, \
-    #     'submission': output_64_msg.get_payload(),
-    #     # 'submission_aux' : source, \
-    #     'submission_aux': source_64_msg.get_payload(),
-    #     'challenge_response': ch_resp,
-    #     'state': state,
-    #     }
-    # url = submit_url(c_url)
-    # data = urllib.urlencode(values)
-    # req = urllib2.Request(url, data)
-    # response = urllib2.urlopen(req)
-    # string = response.read().strip()
-    # result = 0
-    return (result, string)
+    print('Warning: unexpected response code!')
+    print('code:     ', code)
+    # Note response is printed later
+    print('response: ', responce)
+    return code, 'Unexpected response code, please contact the \
+                  course staff.'
 
 
 def get_source(source_file):
@@ -457,7 +428,7 @@ def main(argv):
         for cmd_line_arg in sys.argv[1:]:
             if cmd_line_arg.startswith('-override='):
                 model_file_override = cmd_line_arg.split('=')[1].strip()
-                print('Overridding model file with: '+model_file_override)
+                print('Overriding model file with: '+model_file_override)
 
             if cmd_line_arg.startswith('-record_submission'):
                 record_submission = True
