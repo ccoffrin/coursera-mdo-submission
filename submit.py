@@ -39,7 +39,7 @@ def check_login(metadata, login, password):
     #     quit()
 
 
-def load_meta_data(metadata_file_name = '_coursera'):
+def load_metadata(metadata_file_name = '_coursera'):
     try:
         metadata_file = open(metadata_file_name, 'r')
         
@@ -72,17 +72,7 @@ def load_meta_data(metadata_file_name = '_coursera'):
     return Metadata(url, sid_login, name, problem_data, model_data)
     
     
-def submit(model_file_override=None, record_submission=False):
-    metadata = load_meta_data()
-    
-    print('==\n== '+metadata.name+' Solution Submission \n==')
-    
-    
-    (login, token) = login_prompt()
-    if not login:
-        print('!! Submission Canceled')
-        return
-    
+def submit(metadata, login, token, model_file_override=None, record_submission=False):
     print('\n== Connecting to Coursera ... ')
     check_login(metadata, login, token)
 
@@ -100,13 +90,13 @@ def submit(model_file_override=None, record_submission=False):
         
         submission = get_source(model_file)
 
-        try:
-            submission.decode('utf-8')
-        except UnicodeError:
-            print('Error: the model submission was not UTF-8 and will be skipped.')
-            print('Orginal: ')
-            print(submission)
-            continue
+        # try:
+        #     submission.decode('utf-8')
+        # except UnicodeError:
+        #     print('Error: the model submission was not UTF-8 and will be skipped.')
+        #     print('Orginal: ')
+        #     print(submission)
+        #     continue
         
         print('For part: '+model.name+' Model')
         print('Submitting: '+model_file)
@@ -233,11 +223,14 @@ def submit_solution(metadata, email_address, token, sid, output):
     except urllib2.HTTPError, error:
         responce = json.loads(error.read())
         
-        if 'details' in responce and 'learnerMessage' in responce['details']:
+        print('details' in responce)
+        print(responce['details'])
+        
+        if 'details' in responce and responce['details'] != None and 'learnerMessage' in responce['details']:
             return error.code, responce['details']['learnerMessage']
         else:
-            return error.code, 'Unexpected response code, please contact the \
-                  course staff.  Details: ' + responce['message']
+            return error.code, 'Unexpected response code, please contact the ' \
+                               'course staff.\nDetails: ' + responce['message']
 
     code = res.code
     responce = json.loads(res.read())
@@ -265,59 +258,60 @@ def get_source(source_file):
     return src
 
 
-def run_minizinc(model_file, data_file, time_limit=60000):
-    cmd = [minizinc_cmd, model_file, data_file, '--all-solutions']
-    if isinstance(time_limit, int):
-        cmd.append('--fzn-flags')
-        cmd.append('-time '+str(time_limit))
+# def run_minizinc(model_file, data_file, time_limit=60000):
+#     cmd = [minizinc_cmd, model_file, data_file, '--all-solutions']
+#     if isinstance(time_limit, int):
+#         cmd.append('--fzn-flags')
+#         cmd.append('-time '+str(time_limit))
     
-    print('running gecode minizinc as a subprocess with the command,')
-    print(' '.join(cmd))
+#     print('running gecode minizinc as a subprocess with the command,')
+#     print(' '.join(cmd))
     
-    process = Popen(cmd, stdout=PIPE, stderr=PIPE, shell = (os.name == 'nt') )
+#     process = Popen(cmd, stdout=PIPE, stderr=PIPE, shell = (os.name == 'nt') )
     
-    stdout = ''
-    stderr = ''
+#     stdout = ''
+#     stderr = ''
     
-    while process.poll() != 0:
-        while True:
-            line = process.stdout.readline()
-            if not line:
-                break
-            stdout += line
-            sys.stdout.write(line)
-        sys.stdout.flush()
-        while True:
-            line = process.stderr.readline()
-            if not line:
-                break
-            stderr += line
-            sys.stderr.write(stderr)
-        sys.stderr.flush()
+#     while process.poll() != 0:
+#         while True:
+#             line = process.stdout.readline()
+#             if not line:
+#                 break
+#             stdout += line
+#             sys.stdout.write(line)
+#         sys.stdout.flush()
+#         while True:
+#             line = process.stderr.readline()
+#             if not line:
+#                 break
+#             stderr += line
+#             sys.stderr.write(stderr)
+#         sys.stderr.flush()
     
-    return stdout, stderr
+#     return stdout, stderr
 
 
-def process_monitor(process, time_limit=None, memory_limit=None):
-    status = 0
-    message = 'process finished normally'
+# def process_monitor(process, time_limit=None, memory_limit=None):
+#     status = 0
+#     message = 'process finished normally'
 
-    time.sleep(1)
-    run_time = 1
-    while process.poll() == None:
-        sys.stdout.write('.')
-        sys.stdout.flush()
-        time.sleep(5)
-        run_time += 5
-        if time_limit != None and run_time > time_limit:
-            status = 1
-            message = 'runtime: '+str(run_time)+' timelimit: '+str(time_limit)+' (seconds) - killing process'
-            process.terminate()
-            process.wait()
-            break
+#     time.sleep(1)
+#     run_time = 1
+#     while process.poll() == None:
+#         sys.stdout.write('.')
+#         sys.stdout.flush()
+#         time.sleep(5)
+#         run_time += 5
+#         if time_limit != None and run_time > time_limit:
+#             status = 1
+#             message = 'runtime: '+str(run_time)+' timelimit: '+str(time_limit)+' (seconds) - killing process'
+#             process.terminate()
+#             process.wait()
+#             break
 
-    assert(process.returncode != None)
-    return process.returncode, message
+#     assert(process.returncode != None)
+#     return process.returncode, message
+
 
 def run_minizinc(process_id, model_file, data_file, solution_file=None, solve_time_limit=10000, mzn_time_limit=5000, all_solutions=False):
     cmd = [minizinc_cmd, model_file, data_file]
@@ -437,7 +431,15 @@ def main(argv):
                 record_submission = True
                 print('Recording submission as file')
 
-    submit(model_file_override, record_submission)
+    metadata = load_metadata()
+    print('==\n== '+metadata.name+' Solution Submission \n==')
+    
+    (login, token) = login_prompt()
+    if not login:
+        print('!! Submission Canceled')
+        return
+    
+    submit(metadata, login, token, model_file_override, record_submission)
 
 if __name__ == '__main__':
     import sys
