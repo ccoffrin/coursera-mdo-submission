@@ -7,6 +7,7 @@ import hashlib
 import email.message
 import email.encoders
 
+import json
 import time
 import os.path, sys
 from subprocess import Popen, PIPE
@@ -14,10 +15,12 @@ from collections import namedtuple
 
 process_id = os.getpid()
 
+submitt_url = 'https://www.coursera.org/api/onDemandProgrammingScriptSubmissions.v1'
+
 minizinc_cmd = 'mzn-gecode'
 #minizinc_cmd = 'minizinc'
 
-Metadata = namedtuple("Metadata", ['url', 'sid_login', 'name', 'problem_data', 'model_data'])
+Metadata = namedtuple("Metadata", ['assignment_key', 'sid_login', 'name', 'problem_data', 'model_data'])
 
 Problem = namedtuple("Problem", ['sid', 'model_file', 'input_file', 'runtime', 'name'])
 Model = namedtuple("Model", ['sid', 'model_file', 'name'])
@@ -83,13 +86,13 @@ def submit(model_file_override=None, record_submission=False):
     print('==\n== '+metadata.name+' Solution Submission \n==')
     
     
-    (login, password) = login_prompt()
+    (login, token) = login_prompt()
     if not login:
         print('!! Submission Cancelled')
         return
     
     print('\n== Connecting to Coursera ... ')
-    check_login(metadata, login, password)
+    check_login(metadata, login, token)
 
     selected_problems, selected_models = part_prompt(metadata.name, metadata.problem_data, metadata.model_data)
     
@@ -103,10 +106,6 @@ def submit(model_file_override=None, record_submission=False):
             print('Unable to locate assignment file "'+model_file+'" in the current working directory.')
             continue
         
-        # (login, ch, state, ch_aux) = get_challenge(metadata.url, login, model.sid)
-        # if not login or not ch or not state:
-        #     print('\n!! Error: %s\n' % login)
-        #     return
         submission = get_source(model_file)
 
         try:
@@ -132,9 +131,8 @@ def submit(model_file_override=None, record_submission=False):
             submission_file.close()
 
         
-        #ch_resp = challenge_response(login, password, ch)
-        #(result, string) = submit_solution(metadata.url, login, ch_resp, model.sid, submission, '', state, ch_aux)
-        #print('== %s \n\n' % string.strip())
+        (result, string) = submit_solution(metadata, login, token, model.sid, submission, '')
+        print('== %s \n\n' % string.strip())
 
     
     for problem in selected_problems:
@@ -153,10 +151,9 @@ def submit(model_file_override=None, record_submission=False):
         #     return
         submission = output(problem, model_file, record_submission)
 
-        # if submission != None:
-        #     ch_resp = challenge_response(login, password, ch)
-        #     (result, string) = submit_solution(metadata.url, login, ch_resp, problem.sid, submission, get_source(model_file), state, ch_aux)
-        #     print('== %s \n\n' % string.strip())
+        if submission != None:
+            (result, string) = submit_solution(metadata, login, token, problem.sid, submission, get_source(model_file))
+            print('== %s \n\n' % string.strip())
 
 
 def login_prompt():
@@ -175,8 +172,8 @@ def login_prompt():
 
 def basic_prompt():
     """Prompt the user for login credentials. Returns a tuple (login, password)."""
-    login = raw_input('Login (Email address): ')
-    password = raw_input('Submission Password (from the programming assignments page. This is NOT your own account\'s password): ')
+    login = raw_input('User Name (e-mail address): ')
+    password = raw_input('Submission Token (from the assignment page): ')
     return (login, password)
 
 
@@ -220,69 +217,64 @@ def part_prompt(name, problems, models):
     else:
         return selected_problems, selected_models
 
-
-def get_challenge(c_url, email, sid):
-    """Gets the challenge salt from the server. Returns (email,ch,state,ch_aux)."""
-
-    url = challenge_url(c_url)
-    values = {'email_address': email, 'assignment_part_sid': sid, 'response_encoding': 'delim'}
-    data = urllib.urlencode(values)
-    req = urllib2.Request(url, data)
-    response = urllib2.urlopen(req)
-    text = response.read().strip()
-
-    splits = text.split('|')
-    if len(splits) != 9:
-        print('Badly formatted challenge response: %s' % text)
-        quit()
-    return (splits[2], splits[4], splits[6], splits[8])
-
-
-def challenge_response(email, passwd, challenge):
-    sha1 = hashlib.sha1()
-    sha1.update(''.join([challenge, passwd])) 
-    digest = sha1.hexdigest()
-    strAnswer = ''
-    for i in range(0, len(digest)):
-        strAnswer = strAnswer + digest[i]
-    return strAnswer
-
-
-def challenge_url(url):
-    """Returns the challenge url."""
-    return 'https://class.coursera.org/' + url + '/assignment/challenge'
-
-
-def submit_url(url):
-    """Returns the submission url."""
-    return 'https://class.coursera.org/' + url + '/assignment/submit'
-
-
-def submit_solution(c_url, email_address, ch_resp, sid, output, source, state, ch_aux):
+def submit_solution(metadata, email_address, token, sid, output, source):
     """Submits a solution to the server. Returns (result, string)."""
-    source_64_msg = email.message.Message()
-    source_64_msg.set_payload(source)
-    email.encoders.encode_base64(source_64_msg)
+    
+    problem_parts = {prob_data.sid : {} for prob_data in metadata.problem_data}
+    model_parts = {model_data.sid : {} for model_data in metadata.model_data}
+    parts = {}
+    parts.update(problem_parts)
+    parts.update(model_parts)
 
-    output_64_msg = email.message.Message()
-    output_64_msg.set_payload(output)
-    email.encoders.encode_base64(output_64_msg)
-    values = { 
-        'assignment_part_sid': sid,
-        'email_address': email_address,
-        # 'submission' : output, \
-        'submission': output_64_msg.get_payload(),
-        # 'submission_aux' : source, \
-        'submission_aux': source_64_msg.get_payload(),
-        'challenge_response': ch_resp,
-        'state': state,
-        }
-    url = submit_url(c_url)
-    data = urllib.urlencode(values)
-    req = urllib2.Request(url, data)
-    response = urllib2.urlopen(req)
-    string = response.read().strip()
+    parts[sid]["output"] = output
+
+    submission = {
+        "assignmentKey": metadata.assignment_key,  
+        "submitterEmail": email_address,  
+        "secret": token,
+        "parts": parts
+    }
+
+    print("SUBMIT IT!")
+    print(output) 
+
+    print("********")
+    data = json.dumps(submission)
+    print(data)
     result = 0
+    string = "none!"
+
+    req = urllib2.Request(submitt_url)
+    req.add_header('Cache-Control', 'no-cache')
+    req.add_header('Content-type', 'application/json')
+    # make the request and print the results
+    res = urllib2.urlopen(req, data)
+    print res.read()
+
+
+    # source_64_msg = email.message.Message()
+    # source_64_msg.set_payload(source)
+    # email.encoders.encode_base64(source_64_msg)
+
+    # output_64_msg = email.message.Message()
+    # output_64_msg.set_payload(output)
+    # email.encoders.encode_base64(output_64_msg)
+    # values = { 
+    #     'assignment_part_sid': sid,
+    #     'email_address': email_address,
+    #     # 'submission' : output, \
+    #     'submission': output_64_msg.get_payload(),
+    #     # 'submission_aux' : source, \
+    #     'submission_aux': source_64_msg.get_payload(),
+    #     'challenge_response': ch_resp,
+    #     'state': state,
+    #     }
+    # url = submit_url(c_url)
+    # data = urllib.urlencode(values)
+    # req = urllib2.Request(url, data)
+    # response = urllib2.urlopen(req)
+    # string = response.read().strip()
+    # result = 0
     return (result, string)
 
 
@@ -297,6 +289,7 @@ def get_source(source_file):
 def percent_cb(complete, total): 
     sys.stdout.write('.')
     sys.stdout.flush()
+
 
 def run_minizinc(model_file, data_file, time_limit=60000):
     cmd = [minizinc_cmd, model_file, data_file, '--all-solutions']
