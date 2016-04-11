@@ -1,0 +1,2 @@
+py.test --cov submit --cov-report=html
+

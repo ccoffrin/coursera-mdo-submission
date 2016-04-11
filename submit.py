@@ -24,9 +24,6 @@ mzn_solution = '----------'
 
 def check_login(metadata, login, password):
     return
-    # submission = '0'
-    # source = ''
-
     # print('== Checking Login Credentials ... ')
     # (login, ch, state, ch_aux) = get_challenge(metadata.url, login, metadata.sid_login)
     # if((not login) or (not ch) or (not state)):
@@ -42,9 +39,9 @@ def check_login(metadata, login, password):
     #     quit()
 
 
-def load_meta_data():
+def load_meta_data(metadata_file_name = '_coursera'):
     try:
-        metadata_file = open('_coursera', 'r')
+        metadata_file = open(metadata_file_name, 'r')
         
         url = metadata_file.readline().strip()
         sid_login = metadata_file.readline().strip()
@@ -126,7 +123,7 @@ def submit(model_file_override=None, record_submission=False):
             submission_file.close()
 
         
-        (code, string) = submit_solution(metadata, login, token, model.sid, submission, '')
+        (code, string) = submit_solution(metadata, login, token, model.sid, submission)
         print('== %s \n\n' % string.strip())
 
 
@@ -143,15 +140,15 @@ def submit(model_file_override=None, record_submission=False):
         submission = output(problem, model_file, record_submission)
 
         if submission != None:
-            (code, string) = submit_solution(metadata, login, token, problem.sid, submission, get_source(model_file))
+            (code, string) = submit_solution(metadata, login, token, problem.sid, submission)
             print('== %s \n\n' % string.strip())
 
 
-def login_prompt():
+def login_prompt(credentials_file_location = '_credentials'):
     """Prompt the user for login credentials. Returns a tuple (login, password)."""
-    if os.path.isfile('_credentials'):
+    if os.path.isfile(credentials_file_location):
         try:
-            metadata_file = open('_credentials', 'r')
+            metadata_file = open(credentials_file_location, 'r')
             login = metadata_file.readline().strip()
             password = metadata_file.readline().strip()
         except:
@@ -208,7 +205,7 @@ def part_prompt(name, problems, models):
     else:
         return selected_problems, selected_models
 
-def submit_solution(metadata, email_address, token, sid, output, source):
+def submit_solution(metadata, email_address, token, sid, output):
     """Submits a solution to the server. Returns (result, string)."""
     
     # build json datastructure
@@ -250,16 +247,11 @@ def submit_solution(metadata, email_address, token, sid, output, source):
 
 
 def get_source(source_file):
-    """Collects the source code (just for logging purposes)."""
+    """collects the source code."""
     f = open(source_file,'r')
     src = f.read()
     f.close()
     return src
-    
-
-def percent_cb(complete, total): 
-    sys.stdout.write('.')
-    sys.stdout.flush()
 
 
 def run_minizinc(model_file, data_file, time_limit=60000):
