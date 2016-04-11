@@ -196,7 +196,7 @@ def part_prompt(name, problems, models):
         return selected_problems, selected_models
 
 def submit_solution(metadata, email_address, token, sid, output):
-    """Submits a solution to the server. Returns (result, string)."""
+    """Submits a solution to the server. Returns (code, responce)."""
     
     # build json datastructure
     parts = {}
@@ -222,11 +222,9 @@ def submit_solution(metadata, email_address, token, sid, output):
         res = urllib2.urlopen(req, json.dumps(submission))
     except urllib2.HTTPError, error:
         responce = json.loads(error.read())
-        
-        print('details' in responce)
-        print(responce['details'])
-        
-        if 'details' in responce and responce['details'] != None and 'learnerMessage' in responce['details']:
+
+        if 'details' in responce and responce['details'] != None and \
+            'learnerMessage' in responce['details']:
             return error.code, responce['details']['learnerMessage']
         else:
             return error.code, 'Unexpected response code, please contact the ' \
@@ -239,15 +237,8 @@ def submit_solution(metadata, email_address, token, sid, output):
         return code, 'Your submission has been accepted and will be ' \
                      'graded shortly.'
 
-#    if code >= 400 and code <= 499:
-#        return code, responce['details']['learnerMessage']
-
-    print('Warning: unexpected response code!')
-    print('code:     ', code)
-    # Note response is printed later
-    print('response: ', responce)
-    return code, 'Unexpected response code, please contact the \
-                  course staff.'
+    return code, 'Unexpected response code, please contact the '\
+                 'course staff.\nDetails: ' + responce
 
 
 def get_source(source_file):
