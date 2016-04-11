@@ -6,4 +6,5 @@ MctBF, thisiseasy.mzn, ./data/empty.dzn, 60, This Is Easy
 0NGFV, smm.mzn,        ./data/empty.dzn, 60, Send More Money
 wEDEu, mzn.mzn,        ./data/empty.dzn, 60, Mini Zinc Rockz
 qqnMX, most.mzn,       ./data/empty.dzn, 60, Send Most Money
-0
+1
+qqnMy, model.mzn,      Amazing Model

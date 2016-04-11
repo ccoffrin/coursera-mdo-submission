@@ -6,8 +6,7 @@ import submit
 class TestCorrect:
     def setup_method(self, _):
         """Parse a real network file"""
-        self.meta_data = submit.load_meta_data()
-        #self.case = mpdata.io.parse_mp_case_file(os.path.dirname(os.path.realpath(__file__))+'/data/correct/MP_5_1/case4gs.m')
+        self.meta_data = submit.load_meta_data('_coursera2')
 
     def test_001(self):
         assert len(self.meta_data.problem_data) == 4

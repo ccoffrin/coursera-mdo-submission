@@ -227,16 +227,27 @@ def submit_solution(metadata, email_address, token, sid, output):
     req = urllib2.Request(submitt_url)
     req.add_header('Cache-Control', 'no-cache')
     req.add_header('Content-type', 'application/json')
-    res = urllib2.urlopen(req, json.dumps(submission))
-    code = res.getcode() 
+
+    try:
+        res = urllib2.urlopen(req, json.dumps(submission))
+    except urllib2.HTTPError, error:
+        responce = json.loads(error.read())
+        
+        if 'details' in responce and 'learnerMessage' in responce['details']:
+            return error.code, responce['details']['learnerMessage']
+        else:
+            return error.code, 'Unexpected response code, please contact the \
+                  course staff.  Details: ' + responce['message']
+
+    code = res.code
     responce = json.loads(res.read())
 
     if code >= 200 and code <= 299:
         return code, 'Your submission has been accepted and will be ' \
                      'graded shortly.'
 
-    if code >= 400 and code <= 499:
-        return code, responce['details']['learnerMessage']
+#    if code >= 400 and code <= 499:
+#        return code, responce['details']['learnerMessage']
 
     print('Warning: unexpected response code!')
     print('code:     ', code)
@@ -373,13 +384,13 @@ def output(problem, model_file=None, record_submission=False):
     
     solution = last_solution(stdout)
     
-    try:
-        solution.decode('utf-8')
-    except UnicodeError:
-        print('Error: the submitted solution was not UTF-8 and will be skipped.')
-        print('Orginal: ')
-        print(solution)
-        return None
+    # try:
+    #     solution.decode('utf-8')
+    # except UnicodeError:
+    #     print('Error: the submitted solution was not UTF-8 and will be skipped.')
+    #     print('Orginal: ')
+    #     print(solution)
+    #     return None
 
     print('For part: '+problem.name)
     print('Submitting: ')
@@ -416,8 +427,8 @@ def main(argv):
     model_file_override = None
     record_submission = False
 
-    if len(sys.argv) > 1:
-        for cmd_line_arg in sys.argv[1:]:
+    if len(argv) > 0:
+        for cmd_line_arg in argv:
             if cmd_line_arg.startswith('-override='):
                 model_file_override = cmd_line_arg.split('=')[1].strip()
                 print('Overriding model file with: '+model_file_override)
