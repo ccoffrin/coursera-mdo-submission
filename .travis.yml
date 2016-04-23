@@ -6,6 +6,6 @@ install:
   - "pip install pytest pytest-cov"
   - "pip install codecov"
 script: 
-  - "py.test --cov ./submit.py"
+  - "py.test --cov submit.py"
 after_success:
   - "codecov"
