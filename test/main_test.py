@@ -67,6 +67,10 @@ class TestModelSubmission:
         sys.stdin = StringIO.StringIO('4\n')
         submit.submit(self.metadata, self.login, self.token, './model/model.mzn', True)
 
+    def test_002(self):
+        sys.stdin = StringIO.StringIO('4\n')
+        submit.submit(self.metadata, self.login, self.token)
+
 
 class TestBrokenSubmission:
     def setup_method(self, _):
@@ -97,4 +101,21 @@ class TestPartsPrompt:
     def test_003(self):
         sys.stdin = StringIO.StringIO('-1\n1\n')
         submit.main([])
+
+
+class TestUtilFunctions:
+    def test_001(self):
+        sol = submit.last_solution('obj=2;\n'+submit.mzn_solution+'\nobj=1;\n'+submit.mzn_solution+'\n==========\n')
+        print sol
+        assert(sol == ('\nobj=1;\n'+submit.mzn_solution+'\n==========\n'))
+
+    def test_002(self):
+        sol = submit.last_solution('no solution')
+        #print sol
+        assert(sol == ('no solution'))
+
+    # def test_002(self):
+    #     sys.stdin = StringIO.StringIO('username\ntoken\n')
+    #     submit.login_prompt('_empty')
+
 
