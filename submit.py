@@ -430,17 +430,6 @@ def output(problem, model_file=None, record_submission=False):
     return submission_string
 
 
-try:
-    cmd = [minizinc_cmd, '--help']
-    process = Popen(cmd, stdout=PIPE, shell = (os.name == 'nt') )
-    (stdout, stderr) = process.communicate()    
-except OSError as e:
-    print('unable to find minizinc command: '+minizinc_cmd)
-    print('details: ', e)
-    quit()
-
-
-
 def main(argv):
     metadata_file_override = None
     credentials_file_override = None
@@ -483,7 +472,18 @@ def main(argv):
     
     submit(metadata, login, token, model_file_override, record_submission)
 
+
 if __name__ == '__main__':
     import sys
     main(sys.argv)
+
+    try:
+        cmd = [minizinc_cmd, '--help']
+        process = Popen(cmd, stdout=PIPE, shell = (os.name == 'nt') )
+        stdout, stderr = process.communicate()    
+    except OSError as e:
+        print('unable to find minizinc command: '+minizinc_cmd)
+        print('details: ', e)
+        quit()
+
 
