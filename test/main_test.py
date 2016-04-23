@@ -116,12 +116,10 @@ class TestPartsPrompt:
 class TestUtilFunctions:
     def test_001(self):
         sol = submit.last_solution('obj=2;\n'+submit.mzn_solution+'\nobj=1;\n'+submit.mzn_solution+'\n==========\n')
-        print sol
         assert(sol == ('\nobj=1;\n'+submit.mzn_solution+'\n==========\n'))
 
     def test_002(self):
         sol = submit.last_solution('no solution')
-        #print sol
         assert(sol == ('no solution'))
 
     # def test_002(self):

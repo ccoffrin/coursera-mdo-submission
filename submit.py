@@ -41,7 +41,7 @@ def check_login(metadata, login, password):
 
 def load_metadata(metadata_file_name = '_coursera'):
     if not os.path.exists(metadata_file_name):
-        print 'metadata file '%s' not found' % metadata_file_name
+        print('metadata file "%s" not found' % metadata_file_name)
         quit()
 
     try:
@@ -230,14 +230,14 @@ def submit_solution(metadata, email_address, token, sid, output):
 
     try:
         res = urllib2.urlopen(req, json.dumps(submission))
-    except urllib2.HTTPError, error:
-        responce = json.loads(error.read())
+    except urllib2.HTTPError as e:
+        responce = json.loads(e.read())
 
         if 'details' in responce and responce['details'] != None and \
             'learnerMessage' in responce['details']:
-            return error.code, responce['details']['learnerMessage']
+            return e.code, responce['details']['learnerMessage']
         else:
-            return error.code, 'Unexpected response code, please contact the ' \
+            return e.code, 'Unexpected response code, please contact the ' \
                                'course staff.\nDetails: ' + responce['message']
 
     code = res.code
