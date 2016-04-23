@@ -4,8 +4,8 @@ python:
   - "3.5"
 install: 
   - "pip install pytest pytest-cov"
-  - "pip install coveralls"
+  - "pip install codecov"
 script: 
-  - "py.test --doctest-modules --cov submit --cov-report term-missing"
+  - "py.test --cov ./submit.py"
 after_success:
-  - "coveralls"
+  - "codecov"
