@@ -40,9 +40,13 @@ def check_login(metadata, login, password):
 
 
 def load_metadata(metadata_file_name = '_coursera'):
+    if not os.path.exists(metadata_file_name):
+        print 'metadata file "%s" not found' % metadata_file_name
+        quit()
+
     try:
         metadata_file = open(metadata_file_name, 'r')
-        
+
         url = metadata_file.readline().strip()
         sid_login = metadata_file.readline().strip()
         name = metadata_file.readline().strip()
@@ -69,6 +73,7 @@ def load_metadata(metadata_file_name = '_coursera'):
         print('exception message:')
         print(e)
         quit()
+
     return Metadata(url, sid_login, name, problem_data, model_data)
     
     
