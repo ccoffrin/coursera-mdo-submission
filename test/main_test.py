@@ -11,14 +11,14 @@ import StringIO
 # import urllib2
 # def mock_response(req):
 #     if req.get_full_url() == submit.submitt_url:
-#         resp = urllib2.addinfourl(StringIO("mock file"), "mock message", req.get_full_url())
+#         resp = urllib2.addinfourl(StringIO('mock file'), 'mock message', req.get_full_url())
 #         resp.code = 200
-#         resp.msg = "OK"
+#         resp.msg = 'OK'
 #         return resp
 
 # class MyHTTPHandler(urllib2.HTTPHandler):
 #     def http_open(self, req):
-#         print "mock opener"
+#         print 'mock opener'
 #         return mock_response(req)
 
 # my_opener = urllib2.build_opener(MyHTTPHandler)
@@ -61,7 +61,7 @@ class TestProblemSubmission:
 
 class TestModelSubmission:
     def setup_method(self, _):
-        """Parse a real network file"""
+        '''Parse a real network file'''
         self.metadata = submit.load_metadata('./test/_coursera2')
         self.login, self.token = submit.login_prompt('./test/_credentials2')
 

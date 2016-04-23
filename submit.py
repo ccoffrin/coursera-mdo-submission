@@ -16,9 +16,9 @@ submitt_url = 'https://www.coursera.org/api/onDemandProgrammingScriptSubmissions
 
 minizinc_cmd = 'mzn-gecode'
 
-Metadata = namedtuple("Metadata", ['assignment_key', 'sid_login', 'name', 'problem_data', 'model_data'])
-Problem = namedtuple("Problem", ['sid', 'model_file', 'input_file', 'runtime', 'name'])
-Model = namedtuple("Model", ['sid', 'model_file', 'name'])
+Metadata = namedtuple('Metadata', ['assignment_key', 'sid_login', 'name', 'problem_data', 'model_data'])
+Problem = namedtuple('Problem', ['sid', 'model_file', 'input_file', 'runtime', 'name'])
+Model = namedtuple('Model', ['sid', 'model_file', 'name'])
 
 mzn_solution = '----------'
 
@@ -41,7 +41,7 @@ def check_login(metadata, login, password):
 
 def load_metadata(metadata_file_name = '_coursera'):
     if not os.path.exists(metadata_file_name):
-        print 'metadata file "%s" not found' % metadata_file_name
+        print 'metadata file '%s' not found' % metadata_file_name
         quit()
 
     try:
@@ -211,16 +211,16 @@ def submit_solution(metadata, email_address, token, sid, output):
     # build json datastructure
     parts = {}
     submission = {
-        "assignmentKey": metadata.assignment_key,  
-        "submitterEmail": email_address,  
-        "secret": token,
-        "parts": parts
+        'assignmentKey': metadata.assignment_key,  
+        'submitterEmail': email_address,  
+        'secret': token,
+        'parts': parts
     }
 
     parts.update({prob_data.sid : {} for prob_data in metadata.problem_data})
     parts.update({model_data.sid : {} for model_data in metadata.model_data})
 
-    parts[sid]["output"] = output
+    parts[sid]['output'] = output
 
 
     # send submission

@@ -5,7 +5,6 @@ import submit
 
 class TestCorrect:
     def setup_method(self, _):
-        """Parse a real network file"""
         self.meta_data = submit.load_metadata('./test/_coursera2')
 
     def test_001(self):
