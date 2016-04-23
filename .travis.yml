@@ -6,6 +6,6 @@ install:
   - "pip install pytest pytest-cov"
   - "pip install coveralls"
 script: 
-  - "py.test"
+  - "py.test --doctest-modules --cov submit --cov-report term-missing"
 after_success:
   - "coveralls"
