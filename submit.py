@@ -1,12 +1,35 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import urllib
-import urllib2
+# Python 2/3 compatibility 
+from __future__ import print_function
+
+# Python 2:
+try:
+    from urlparse import urlparse
+    from urllib import urlencode
+    from urllib2 import urlopen, Request, HTTPError
+except:
+    pass
+
+# Python 3:
+try:
+    from urllib.parse import urlparse, urlencode
+    from urllib.request import urlopen, Request
+    from urllib.error import HTTPError
+except:
+    pass
+
+import sys
+# Python 2:
+if sys.version_info < (3, 0):
+    def input(str):
+        return raw_input(str)
+
 
 import json
 import time
-import os.path, sys
+import os.path
 from subprocess import Popen, PIPE
 from collections import namedtuple
 
@@ -160,8 +183,8 @@ def login_prompt(credentials_file_location = '_credentials'):
 
 def basic_prompt():
     """Prompt the user for login credentials. Returns a tuple (login, password)."""
-    login = raw_input('User Name (e-mail address): ')
-    password = raw_input('Submission Token (from the assignment page): ')
+    login = input('User Name (e-mail address): ')
+    password = input('Submission Token (from the assignment page): ')
     return (login, password)
 
 
@@ -176,7 +199,7 @@ def part_prompt(name, problems, models):
         count += 1
     print('0) All')
 
-    part_text = raw_input('Please enter which part(s) you want to submit (0-'+ str(count-1) + '): ')
+    part_text = input('Please enter which part(s) you want to submit (0-'+ str(count-1) + '): ')
     selected_problems = []
     selected_models = []
 
@@ -224,14 +247,14 @@ def submit_solution(metadata, email_address, token, sid, output):
 
 
     # send submission
-    req = urllib2.Request(submitt_url)
+    req = Request(submitt_url)
     req.add_header('Cache-Control', 'no-cache')
     req.add_header('Content-type', 'application/json')
 
     try:
-        res = urllib2.urlopen(req, json.dumps(submission))
-    except urllib2.HTTPError as e:
-        responce = json.loads(e.read())
+        res = urlopen(req, json.dumps(submission).encode('utf8'))
+    except HTTPError as e:
+        responce = json.loads(e.read().decode('utf8'))
 
         if 'details' in responce and responce['details'] != None and \
             'learnerMessage' in responce['details']:
@@ -241,7 +264,7 @@ def submit_solution(metadata, email_address, token, sid, output):
                                'course staff.\nDetails: ' + responce['message']
 
     code = res.code
-    responce = json.loads(res.read())
+    responce = json.loads(res.read().decode('utf8'))
 
     if code >= 200 and code <= 299:
         return code, 'Your submission has been accepted and will be ' \
@@ -332,14 +355,14 @@ def run_minizinc(process_id, model_file, data_file, solution_file=None, solve_ti
 
     while process.poll() != 0:
         while True:
-            line = process.stdout.readline()
+            line = process.stdout.readline().decode('utf8')
             if not line:
                 break
             stdout += line
             sys.stdout.write(line)
         sys.stdout.flush()
         while True:
-            line = process.stderr.readline()
+            line = process.stderr.readline().decode('utf8')
             if not line:
                 break
             stderr += line
