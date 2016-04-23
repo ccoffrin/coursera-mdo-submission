@@ -1,4 +1,4 @@
 #!/bin/bash
 
-py.test --cov submit --cov-report=html $@
+py.test --cov ./submit.py --cov-report=html $@
 
