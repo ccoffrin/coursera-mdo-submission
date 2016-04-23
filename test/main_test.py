@@ -33,7 +33,9 @@ import StringIO
 class TestLogin:
     def test_001(self):
         sys.stdin = StringIO.StringIO('username\ntoken\n')
-        submit.login_prompt('')
+        login, password = submit.login_prompt('')
+        assert(login == 'username')
+        assert(password == 'token')
 
     # def test_002(self):
     #     sys.stdin = StringIO.StringIO('username\ntoken\n')
@@ -65,11 +67,15 @@ class TestModelSubmission:
 
     def test_001(self):
         sys.stdin = StringIO.StringIO('4\n')
-        submit.submit(self.metadata, self.login, self.token, './model/model.mzn', True)
+        results = submit.submit(self.metadata, self.login, self.token, './model/model.mzn', True)
+        for k,v in results.iteritems():
+            assert(v['code'] == 201) #submission worked
 
+    #model file not found
     def test_002(self):
         sys.stdin = StringIO.StringIO('4\n')
-        submit.submit(self.metadata, self.login, self.token)
+        results = submit.submit(self.metadata, self.login, self.token)
+        assert(len(results) == 0)
 
 
 class TestBrokenSubmission:
@@ -80,13 +86,17 @@ class TestBrokenSubmission:
     # should throw incorrect problem parts
     def test_001(self):
         sys.stdin = StringIO.StringIO('1\n')
-        submit.submit(self.metadata, self.login, self.token, './model/model.mzn', False)
+        results = submit.submit(self.metadata, self.login, self.token, './model/model.mzn', False)
+        for k,v in results.iteritems():
+            assert(v['code'] == 400) #submission broken
 
     # should throw incorrect login details
     def test_002(self):
         sys.stdin = StringIO.StringIO('1\n')
         login, token = submit.login_prompt()
-        submit.submit(self.metadata, login, token, './model/model.mzn', False)
+        results = submit.submit(self.metadata, login, token, './model/model.mzn', False)
+        for k,v in results.iteritems():
+            assert(v['code'] == 400) #submission broken
 
 
 class TestPartsPrompt:

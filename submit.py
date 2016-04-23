@@ -78,6 +78,7 @@ def submit(metadata, login, token, model_file_override=None, record_submission=F
 
     selected_problems, selected_models = part_prompt(metadata.name, metadata.problem_data, metadata.model_data)
     
+    results = {}
     for model in selected_models:
         if model_file_override != None:
             model_file = model_file_override
@@ -113,7 +114,8 @@ def submit(metadata, login, token, model_file_override=None, record_submission=F
             submission_file.close()
 
         
-        (code, string) = submit_solution(metadata, login, token, model.sid, submission)
+        code, string = submit_solution(metadata, login, token, model.sid, submission)
+        results[model.sid] = {'code':code, 'string':string}
         print('== %s \n\n' % string.strip())
 
 
@@ -130,8 +132,11 @@ def submit(metadata, login, token, model_file_override=None, record_submission=F
         submission = output(problem, model_file, record_submission)
 
         if submission != None:
-            (code, string) = submit_solution(metadata, login, token, problem.sid, submission)
+            code, string = submit_solution(metadata, login, token, problem.sid, submission)
+            results[problem.sid] = {'code':code, 'string':string}
             print('== %s \n\n' % string.strip())
+
+    return results
 
 
 def login_prompt(credentials_file_location = '_credentials'):
@@ -425,7 +430,7 @@ def main(argv):
     metadata = load_metadata()
     print('==\n== '+metadata.name+' Solution Submission \n==')
     
-    (login, token) = login_prompt()
+    login, token = login_prompt()
     if not login:
         print('!! Submission Canceled')
         return
