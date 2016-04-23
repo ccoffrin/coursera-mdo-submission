@@ -1,6 +1,6 @@
 import sys, os, pytest
 
-sys.path.append('..')
+sys.path.append('.')
 import submit
 
 import StringIO
@@ -46,28 +46,28 @@ class TestProblemSubmission:
     # tests problem selection
     def test_001(self):
         sys.stdin = StringIO.StringIO('1\n')
-        submit.main([])
+        submit.main(['-metadata=./test/_coursera', '-credentials=./test/_credentials'])
 
     # tests running a problem
     def test_002(self):
         sys.stdin = StringIO.StringIO('1\n')
-        submit.main(['-override=./model/model.mzn'])
+        submit.main(['-override=./test/model/model.mzn', '-metadata=./test/_coursera', '-credentials=./test/_credentials'])
 
     # tests running a problem in record mode
     def test_003(self):
         sys.stdin = StringIO.StringIO('1\n')
-        submit.main(['-override=./model/model.mzn', '-record_submission'])
+        submit.main(['-override=./test/model/model.mzn', '-record_submission', '-metadata=./test/_coursera', '-credentials=./test/_credentials'])
 
 
 class TestModelSubmission:
     def setup_method(self, _):
         """Parse a real network file"""
-        self.metadata = submit.load_metadata('_coursera2')
-        self.login, self.token = submit.login_prompt('_credentials2')
+        self.metadata = submit.load_metadata('./test/_coursera2')
+        self.login, self.token = submit.login_prompt('./test/_credentials2')
 
     def test_001(self):
         sys.stdin = StringIO.StringIO('4\n')
-        results = submit.submit(self.metadata, self.login, self.token, './model/model.mzn', True)
+        results = submit.submit(self.metadata, self.login, self.token, './test/model/model.mzn', True)
         for k,v in results.iteritems():
             assert(v['code'] == 201) #submission worked
 
@@ -80,21 +80,21 @@ class TestModelSubmission:
 
 class TestBrokenSubmission:
     def setup_method(self, _):
-        self.metadata = submit.load_metadata('_coursera3')
-        self.login, self.token = submit.login_prompt('_credentials2')
+        self.metadata = submit.load_metadata('./test/_coursera3')
+        self.login, self.token = submit.login_prompt('./test/_credentials2')
 
     # should throw incorrect problem parts
     def test_001(self):
         sys.stdin = StringIO.StringIO('1\n')
-        results = submit.submit(self.metadata, self.login, self.token, './model/model.mzn', False)
+        results = submit.submit(self.metadata, self.login, self.token, './test/model/model.mzn', False)
         for k,v in results.iteritems():
             assert(v['code'] == 400) #submission broken
 
     # should throw incorrect login details
     def test_002(self):
         sys.stdin = StringIO.StringIO('1\n')
-        login, token = submit.login_prompt()
-        results = submit.submit(self.metadata, login, token, './model/model.mzn', False)
+        login, token = submit.login_prompt('./test/_credentials')
+        results = submit.submit(self.metadata, login, token, './test/model/model.mzn', False)
         for k,v in results.iteritems():
             assert(v['code'] == 400) #submission broken
 
@@ -102,15 +102,15 @@ class TestBrokenSubmission:
 class TestPartsPrompt:
     def test_001(self):
         sys.stdin = StringIO.StringIO('0.1\n1\n')
-        submit.main([])
+        submit.main(['-metadata=./test/_coursera', '-credentials=./test/_credentials'])
 
     def test_002(self):
         sys.stdin = StringIO.StringIO('100\n1\n')
-        submit.main([])
+        submit.main(['-metadata=./test/_coursera', '-credentials=./test/_credentials'])
 
     def test_003(self):
         sys.stdin = StringIO.StringIO('-1\n1\n')
-        submit.main([])
+        submit.main(['-metadata=./test/_coursera', '-credentials=./test/_credentials'])
 
 
 class TestUtilFunctions:

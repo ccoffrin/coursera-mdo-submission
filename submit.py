@@ -419,6 +419,8 @@ except OSError as e:
 
 
 def main(argv):
+    metadata_file_override = None
+    credentials_file_override = None
     model_file_override = None
     record_submission = False
 
@@ -428,14 +430,30 @@ def main(argv):
                 model_file_override = cmd_line_arg.split('=')[1].strip()
                 print('Overriding model file with: '+model_file_override)
 
+            if cmd_line_arg.startswith('-metadata='):
+                metadata_file_override = cmd_line_arg.split('=')[1].strip()
+                print('Overriding metadata file with: '+metadata_file_override)
+
+            if cmd_line_arg.startswith('-credentials='):
+                credentials_file_override = cmd_line_arg.split('=')[1].strip()
+                print('Overriding credentials file with: '+credentials_file_override)
+
             if cmd_line_arg.startswith('-record_submission'):
                 record_submission = True
                 print('Recording submission as file')
 
-    metadata = load_metadata()
+    if metadata_file_override == None:
+        metadata = load_metadata()
+    else:
+        metadata = load_metadata(metadata_file_override)
+
     print('==\n== '+metadata.name+' Solution Submission \n==')
     
-    login, token = login_prompt()
+    if credentials_file_override == None:
+        login, token = login_prompt()
+    else:
+        login, token = login_prompt(credentials_file_override)
+
     if not login:
         print('!! Submission Canceled')
         return
