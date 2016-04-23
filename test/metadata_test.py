@@ -16,7 +16,13 @@ class TestCorrect:
 
 
 class TestBroken:
+    # file not found
     def test_001(self):
+        with pytest.raises(SystemExit):
+            submit.load_metadata('_missing')
+
+    # bad meta data format
+    def test_002(self):
         with pytest.raises(SystemExit):
             submit.load_metadata('_empty')
 
