@@ -360,7 +360,7 @@ def main(args):
         return
 
     # store submissions if requested
-    if args.record_submission is not None:
+    if args.record_submission == True:
         print('Recording submission as files')
         for sid, submission in results.items():
             if 'output' in submission:

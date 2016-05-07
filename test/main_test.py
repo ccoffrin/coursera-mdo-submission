@@ -49,7 +49,6 @@ class TestLogin:
     # testing manual override when credentials file is incorrect
     def test_003(self, capfd):
         login, token = submit.login_prompt('./test/_credentials')
-        print u'1\n%s\n%s\n' % (login, token)
         sys.stdin = StringIO(u'1\n%s\n%s\n' % (login, token))
         
         submit.main(self.parser.parse_args(['-o', './test/model/model.mzn', '-m', './test/_coursera', '-c', './test/_credentials3']))
