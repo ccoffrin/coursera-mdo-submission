@@ -32,11 +32,30 @@ from io import StringIO
 
 
 class TestLogin:
+    def setup_class(self):
+        self.parser = submit.build_parser()
+
     def test_001(self):
         sys.stdin = StringIO(u'username\ntoken\n')
-        login, password = submit.login_prompt('')
+        login, token = submit.login_prompt('')
         assert(login == 'username')
-        assert(password == 'token')
+        assert(token == 'token')
+
+    def test_002(self):
+        login, token = submit.login_prompt('./test/_credentials')
+        assert(login == 'cj@coffr.in')
+        assert(token == '3CmLNV0jk1GwhUCO')
+
+    # testing manual override when credentials file is incorrect
+    def test_003(self, capfd):
+        login, token = submit.login_prompt('./test/_credentials')
+        print u'1\n%s\n%s\n' % (login, token)
+        sys.stdin = StringIO(u'1\n%s\n%s\n' % (login, token))
+        
+        submit.main(self.parser.parse_args(['-o', './test/model/model.mzn', '-m', './test/_coursera', '-c', './test/_credentials3']))
+
+        resout, reserr = capfd.readouterr()
+        assert(output_worked in resout)
 
 
 class TestPartsPrompt:

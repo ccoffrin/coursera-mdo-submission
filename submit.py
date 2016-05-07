@@ -144,8 +144,6 @@ def compute(metadata, model_file_override=None):
         print('Overriding model file with: '+model_file_override)
 
     selected_problems, selected_models = part_prompt(metadata.name, metadata.problem_data, metadata.model_data)
-    
-    print(selected_problems, selected_models)
 
     results = {}
 
@@ -258,8 +256,15 @@ def output(problem, model_file=None):
 
 def login_dialog(assignment_key, results, credentials_file_location = '_credentials'):
     success = False
+    tries = 0
+
     while not success:
-        login, token = login_prompt(credentials_file_location)
+
+        # stops infinate loop when credentials file is incorrect 
+        if tries <= 0:
+            login, token = login_prompt(credentials_file_location)
+        else:
+            login, token = login_prompt('')
 
         code, responce = submit_solution(assignment_key, login, token, results)
 
@@ -271,6 +276,7 @@ def login_dialog(assignment_key, results, credentials_file_location = '_credenti
             success = True
         else:
             print('\ntry logging in again')
+        tries += 1
 
 def login_prompt(credentials_file_location):
     '''Prompt the user for login credentials. Returns a tuple (login, token).'''
