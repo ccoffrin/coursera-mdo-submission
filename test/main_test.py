@@ -63,7 +63,7 @@ class TestPartsPrompt:
 
     def test_001(self, capfd):
         sys.stdin = StringIO(u'0.1\n1\n')
-        problems, models = submit.part_prompt(self.metadata.name, self.metadata.problem_data, self.metadata.model_data)
+        problems, models = submit.part_prompt(self.metadata.problem_data, self.metadata.model_data)
         assert(len(problems) == 1)
 
         resout, reserr = capfd.readouterr()
@@ -71,7 +71,7 @@ class TestPartsPrompt:
 
     def test_002(self, capfd):
         sys.stdin = StringIO(u'100\n1\n')
-        problems, models = submit.part_prompt(self.metadata.name, self.metadata.problem_data, self.metadata.model_data)
+        problems, models = submit.part_prompt(self.metadata.problem_data, self.metadata.model_data)
         assert(len(problems) == 1)
 
         resout, reserr = capfd.readouterr()
@@ -79,7 +79,7 @@ class TestPartsPrompt:
 
     def test_003(self, capfd):
         sys.stdin = StringIO(u'-1\n1\n')
-        problems, models = submit.part_prompt(self.metadata.name, self.metadata.problem_data, self.metadata.model_data)
+        problems, models = submit.part_prompt(self.metadata.problem_data, self.metadata.model_data)
         assert(len(problems) == 1)
 
         resout, reserr = capfd.readouterr()
@@ -87,12 +87,12 @@ class TestPartsPrompt:
 
     def test_004(self, capfd):
         sys.stdin = StringIO(u'1,2\n')
-        problems, models = submit.part_prompt(self.metadata.name, self.metadata.problem_data, self.metadata.model_data)
+        problems, models = submit.part_prompt(self.metadata.problem_data, self.metadata.model_data)
         assert(len(problems) == 2)
 
     def test_005(self, capfd):
         sys.stdin = StringIO(u'0\n')
-        problems, models = submit.part_prompt(self.metadata.name, self.metadata.problem_data, self.metadata.model_data)
+        problems, models = submit.part_prompt(self.metadata.problem_data, self.metadata.model_data)
         assert(len(problems) == len(self.metadata.problem_data))
         assert(len(models) == len(self.metadata.model_data))
 
