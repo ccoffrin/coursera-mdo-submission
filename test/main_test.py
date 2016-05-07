@@ -3,8 +3,9 @@ import sys, os, pytest
 sys.path.append('.')
 import submit
 
-from io import StringIO 
+output_worked = 'Your submission has been accepted and will be graded shortly.'
 
+from io import StringIO 
 
 # Mocking curl
 #
@@ -27,7 +28,7 @@ from io import StringIO
 #    # tests model selection
 #    def test_003(self):
 #        sys.stdin = StringIO(u'\n\n')
-#        submit.main([])
+#        submit.main(self.parser.parse_args([])
 
 
 class TestLogin:
@@ -37,80 +38,125 @@ class TestLogin:
         assert(login == 'username')
         assert(password == 'token')
 
-    # def test_002(self):
-    #     sys.stdin = StringIO(u'username\ntoken\n')
-    #     submit.login_prompt('_empty')
+
+class TestPartsPrompt:
+    def setup_class(self):
+        self.metadata = submit.load_metadata('./test/_coursera')
+
+    def test_001(self, capfd):
+        sys.stdin = StringIO(u'0.1\n1\n')
+        problems, models = submit.part_prompt(self.metadata.name, self.metadata.problem_data, self.metadata.model_data)
+        assert(len(problems) == 1)
+
+        resout, reserr = capfd.readouterr()
+        assert('It is not an integer.' in resout)
+
+    def test_002(self, capfd):
+        sys.stdin = StringIO(u'100\n1\n')
+        problems, models = submit.part_prompt(self.metadata.name, self.metadata.problem_data, self.metadata.model_data)
+        assert(len(problems) == 1)
+
+        resout, reserr = capfd.readouterr()
+        assert('It is out of the valid range' in resout)
+
+    def test_003(self, capfd):
+        sys.stdin = StringIO(u'-1\n1\n')
+        problems, models = submit.part_prompt(self.metadata.name, self.metadata.problem_data, self.metadata.model_data)
+        assert(len(problems) == 1)
+
+        resout, reserr = capfd.readouterr()
+        assert('It is out of the valid range' in resout)
+
+    def test_004(self, capfd):
+        sys.stdin = StringIO(u'1,2\n')
+        problems, models = submit.part_prompt(self.metadata.name, self.metadata.problem_data, self.metadata.model_data)
+        assert(len(problems) == 2)
+
+    def test_005(self, capfd):
+        sys.stdin = StringIO(u'0\n')
+        problems, models = submit.part_prompt(self.metadata.name, self.metadata.problem_data, self.metadata.model_data)
+        assert(len(problems) == len(self.metadata.problem_data))
+        assert(len(models) == len(self.metadata.model_data))
+
 
 
 class TestProblemSubmission:
+    def setup_class(self):
+        self.parser = submit.build_parser()
+
     # tests problem selection
-    def test_001(self):
+    def test_001(self, capfd):
         sys.stdin = StringIO(u'1\n')
-        submit.main(['-metadata=./test/_coursera', '-credentials=./test/_credentials'])
+        submit.main(self.parser.parse_args(['-m', './test/_coursera', '-c', './test/_credentials']))
+
+        output = 'Unable to locate assignment file'
+        resout, reserr = capfd.readouterr()
+        assert(output in resout)
 
     # tests running a problem
-    def test_002(self):
+    def test_002(self, capfd):
         sys.stdin = StringIO(u'1\n')
-        submit.main(['-override=./test/model/model.mzn', '-metadata=./test/_coursera', '-credentials=./test/_credentials'])
+        submit.main(self.parser.parse_args(['-o', './test/model/model.mzn', '-m', './test/_coursera', '-c', './test/_credentials']))
+
+        resout, reserr = capfd.readouterr()
+        assert(output_worked in resout)
 
     # tests running a problem in record mode
-    def test_003(self):
+    def test_003(self, capfd):
         sys.stdin = StringIO(u'1\n')
-        submit.main(['-override=./test/model/model.mzn', '-record_submission', '-metadata=./test/_coursera', '-credentials=./test/_credentials'])
+        submit.main(self.parser.parse_args(['-o', './test/model/model.mzn', '-rs', '-m', './test/_coursera', '-c', './test/_credentials']))
+
+        resout, reserr = capfd.readouterr()
+        assert(output_worked in resout)
 
 
 class TestModelSubmission:
     def setup_method(self, _):
-        '''Parse a real network file'''
-        self.metadata = submit.load_metadata('./test/_coursera2')
-        self.login, self.token = submit.login_prompt('./test/_credentials2')
+        self.parser = submit.build_parser()
 
-    def test_001(self):
+    def test_001(self, capfd):
         sys.stdin = StringIO(u'4\n')
-        results = submit.submit(self.metadata, self.login, self.token, './test/model/model.mzn', True)
-        for k,v in results.items():
-            assert(v['code'] == 201) #submission worked
+        submit.main(self.parser.parse_args(['-o', './test/model/model.mzn', '-m', './test/_coursera2', '-c', './test/_credentials2']))
+
+        resout, reserr = capfd.readouterr()
+        assert(output_worked in resout)
 
     #model file not found
-    def test_002(self):
+    def test_002(self, capfd):
         sys.stdin = StringIO(u'4\n')
-        results = submit.submit(self.metadata, self.login, self.token)
-        assert(len(results) == 0)
+        submit.main(self.parser.parse_args(['-m', './test/_coursera2', '-c', './test/_credentials2']))
+
+        resout, reserr = capfd.readouterr()
+        assert('Unable to locate assignment file' in resout)
 
 
 class TestBrokenSubmission:
     def setup_method(self, _):
-        self.metadata = submit.load_metadata('./test/_coursera3')
-        self.login, self.token = submit.login_prompt('./test/_credentials2')
+        self.parser = submit.build_parser()
 
     # should throw incorrect problem parts
-    def test_001(self):
+    def test_001(self, capfd):
         sys.stdin = StringIO(u'1\n')
-        results = submit.submit(self.metadata, self.login, self.token, './test/model/model.mzn', False)
-        for k,v in results.items():
-            assert(v['code'] == 400) #submission broken
+        submit.main(self.parser.parse_args(['-m', './test/_coursera3', '-c', './test/_credentials2', '-o', './test/model/model.mzn']))
+
+        output_1 = 'Unexpected response code, please contact the course staff.'
+        output_2 = 'Expected parts: '
+        output_3 = 'but found: '
+        resout, reserr = capfd.readouterr()
+        print(resout)
+        assert(output_1 in resout)
+        assert(output_2 in resout)
+        assert(output_3 in resout)
 
     # should throw incorrect login details
-    def test_002(self):
+    def test_002(self, capfd):
         sys.stdin = StringIO(u'1\n')
-        login, token = submit.login_prompt('./test/_credentials')
-        results = submit.submit(self.metadata, login, token, './test/model/model.mzn', False)
-        for k,v in results.items():
-            assert(v['code'] == 400) #submission broken
-
-
-class TestPartsPrompt:
-    def test_001(self):
-        sys.stdin = StringIO(u'0.1\n1\n')
-        submit.main(['-metadata=./test/_coursera', '-credentials=./test/_credentials'])
-
-    def test_002(self):
-        sys.stdin = StringIO(u'100\n1\n')
-        submit.main(['-metadata=./test/_coursera', '-credentials=./test/_credentials'])
-
-    def test_003(self):
-        sys.stdin = StringIO(u'-1\n1\n')
-        submit.main(['-metadata=./test/_coursera', '-credentials=./test/_credentials'])
+        submit.main(self.parser.parse_args(['-m', './test/_coursera3', '-c', './test/_credentials', '-o', './test/model/model.mzn']))
+        
+        output = 'Please use a token for the assignment you are submitting.'
+        resout, reserr = capfd.readouterr()
+        print(resout)
+        assert(output in resout)
 
 
 class TestUtilFunctions:

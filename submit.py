@@ -27,6 +27,8 @@ if sys.version_info < (3, 0):
         return raw_input(str)
 
 
+# Start of core script
+
 import json
 import time
 import os.path
@@ -35,31 +37,17 @@ from collections import namedtuple
 
 process_id = os.getpid()
 
+version = '1.0.0'
 submitt_url = 'https://www.coursera.org/api/onDemandProgrammingScriptSubmissions.v1'
 
 minizinc_cmd = 'mzn-gecode'
 
-Metadata = namedtuple('Metadata', ['assignment_key', 'sid_login', 'name', 'problem_data', 'model_data'])
+Metadata = namedtuple('Metadata', ['assignment_key', 'name', 'problem_data', 'model_data'])
 Problem = namedtuple('Problem', ['sid', 'model_file', 'input_file', 'runtime', 'name'])
 Model = namedtuple('Model', ['sid', 'model_file', 'name'])
 
 mzn_solution = '----------'
 
-def check_login(metadata, login, password):
-    return
-    # print('== Checking Login Credentials ... ')
-    # (login, ch, state, ch_aux) = get_challenge(metadata.url, login, metadata.sid_login)
-    # if((not login) or (not ch) or (not state)):
-    #     print('\n!! Error: %s\n' % login)
-    #     return
-    # ch_resp = challenge_response(login, password, ch)
-    # (result, string) = submit_solution(metadata.url, login, ch_resp, metadata.sid_login, submission, source, state, ch_aux)
-    # if string.strip() == 'password verified':
-    #     print('== credentials verified')
-    # else :
-    #     print('\n!! login failed')
-    #     print('== %s' % string.strip())
-    #     quit()
 
 
 def load_metadata(metadata_file_name = '_coursera'):
@@ -70,8 +58,7 @@ def load_metadata(metadata_file_name = '_coursera'):
     try:
         metadata_file = open(metadata_file_name, 'r')
 
-        url = metadata_file.readline().strip()
-        sid_login = metadata_file.readline().strip()
+        key = metadata_file.readline().strip()
         name = metadata_file.readline().strip()
         problem_count = int(metadata_file.readline().strip())
         problem_data = []
@@ -97,95 +84,7 @@ def load_metadata(metadata_file_name = '_coursera'):
         print(e)
         quit()
 
-    return Metadata(url, sid_login, name, problem_data, model_data)
-    
-    
-def submit(metadata, login, token, model_file_override=None, record_submission=False):
-    print('\n== Connecting to Coursera ... ')
-    check_login(metadata, login, token)
-
-    selected_problems, selected_models = part_prompt(metadata.name, metadata.problem_data, metadata.model_data)
-    
-    results = {}
-    for model in selected_models:
-        if model_file_override != None:
-            model_file = model_file_override
-        else:
-            model_file = model.model_file
-        
-        if not os.path.isfile(model_file):
-            print('Unable to locate assignment file "'+model_file+'" in the current working directory.')
-            continue
-        
-        submission = get_source(model_file)
-
-        # try:
-        #     submission.decode('utf-8')
-        # except UnicodeError:
-        #     print('Error: the model submission was not UTF-8 and will be skipped.')
-        #     print('Orginal: ')
-        #     print(submission)
-        #     continue
-        
-        print('For part: '+model.name+' Model')
-        print('Submitting: '+model_file)
-        
-        if record_submission:
-            directory = '_'+model.sid
-            if not os.path.exists(directory):
-                os.makedirs(directory)
-
-            submission_file_name = directory+'/submission.sub'
-            print('writting submission file: '+submission_file_name)
-            submission_file = open(submission_file_name,'w')
-            submission_file.write(submission)
-            submission_file.close()
-
-        
-        code, string = submit_solution(metadata, login, token, model.sid, submission)
-        results[model.sid] = {'code':code, 'string':string}
-        print('== %s \n\n' % string.strip())
-
-
-    for problem in selected_problems:
-        if model_file_override != None:
-            model_file = model_file_override
-        else:
-            model_file = problem.model_file
-        
-        if not os.path.isfile(model_file):
-            print('Unable to locate assignment file "'+model_file+'" in the current working directory.')
-            continue
-
-        submission = output(problem, model_file, record_submission)
-
-        if submission != None:
-            code, string = submit_solution(metadata, login, token, problem.sid, submission)
-            results[problem.sid] = {'code':code, 'string':string}
-            print('== %s \n\n' % string.strip())
-
-    return results
-
-
-def login_prompt(credentials_file_location = '_credentials'):
-    """Prompt the user for login credentials. Returns a tuple (login, password)."""
-    if os.path.isfile(credentials_file_location):
-        try:
-            metadata_file = open(credentials_file_location, 'r')
-            login = metadata_file.readline().strip()
-            password = metadata_file.readline().strip()
-        except:
-            login, password = basic_prompt()
-    else:
-        login, password = basic_prompt()
-    return login, password
-
-
-def basic_prompt():
-    """Prompt the user for login credentials. Returns a tuple (login, password)."""
-    login = input('User Name (e-mail address): ')
-    password = input('Submission Token (from the assignment page): ')
-    return (login, password)
+    return Metadata(key, name, problem_data, model_data)
 
 
 def part_prompt(name, problems, models):
@@ -199,27 +98,30 @@ def part_prompt(name, problems, models):
         count += 1
     print('0) All')
 
-    part_text = input('Please enter which part(s) you want to submit (0-'+ str(count-1) + '): ')
+    part_text = input('Please enter which part(s) you want to submit (0-'+ str(count) + '): ')
     selected_problems = []
     selected_models = []
 
     for item in part_text.split(','):
         try:
-            i = int(item)-1
+            i = int(item)
         except:
             print('Skipping input "' + item + '".  It is not an integer.')
             continue
-        if i >= count-1:
-            print('Skipping input "' + item + '".  It is out of range (the maximum value is ' + str(count-1) + ').')
+
+        if i >= count or i < 0:
+            print('Skipping input "' + item + '".  It is out of the valid range (0-' + str(count) + ').')
             continue
-        if i < 0:
+
+        if i == 0:
             selected_problems.extend(problems)
             selected_models.extend(models)
             continue
-        if i < len(problems):
-            selected_problems.append(problems[i])
+
+        if i <= len(problems):
+            selected_problems.append(problems[i-1])
         else:
-            selected_models.append(models[i-len(problems)])
+            selected_models.append(models[i-1-len(problems)])
             
 
     if len(selected_problems) <= 0 and len(selected_models) <= 0:
@@ -228,113 +130,57 @@ def part_prompt(name, problems, models):
     else:
         return selected_problems, selected_models
 
-def submit_solution(metadata, email_address, token, sid, output):
-    """Submits a solution to the server. Returns (code, responce)."""
-    
-    # build json datastructure
-    parts = {}
-    submission = {
-        'assignmentKey': metadata.assignment_key,  
-        'submitterEmail': email_address,  
-        'secret': token,
-        'parts': parts
-    }
-
-    parts.update({prob_data.sid : {} for prob_data in metadata.problem_data})
-    parts.update({model_data.sid : {} for model_data in metadata.model_data})
-
-    parts[sid]['output'] = output
-
-
-    # send submission
-    req = Request(submitt_url)
-    req.add_header('Cache-Control', 'no-cache')
-    req.add_header('Content-type', 'application/json')
-
-    try:
-        res = urlopen(req, json.dumps(submission).encode('utf8'))
-    except HTTPError as e:
-        responce = json.loads(e.read().decode('utf8'))
-
-        if 'details' in responce and responce['details'] != None and \
-            'learnerMessage' in responce['details']:
-            return e.code, responce['details']['learnerMessage']
-        else:
-            return e.code, 'Unexpected response code, please contact the ' \
-                               'course staff.\nDetails: ' + responce['message']
-
-    code = res.code
-    responce = json.loads(res.read().decode('utf8'))
-
-    if code >= 200 and code <= 299:
-        return code, 'Your submission has been accepted and will be ' \
-                     'graded shortly.'
-
-    return code, 'Unexpected response code, please contact the '\
-                 'course staff.\nDetails: ' + responce
-
 
 def get_source(source_file):
-    """collects the source code."""
+    '''collects the source code.'''
     f = open(source_file,'r')
     src = f.read()
     f.close()
     return src
 
 
-# def run_minizinc(model_file, data_file, time_limit=60000):
-#     cmd = [minizinc_cmd, model_file, data_file, '--all-solutions']
-#     if isinstance(time_limit, int):
-#         cmd.append('--fzn-flags')
-#         cmd.append('-time '+str(time_limit))
-    
-#     print('running gecode minizinc as a subprocess with the command,')
-#     print(' '.join(cmd))
-    
-#     process = Popen(cmd, stdout=PIPE, stderr=PIPE, shell = (os.name == 'nt') )
-    
-#     stdout = ''
-#     stderr = ''
-    
-#     while process.poll() != 0:
-#         while True:
-#             line = process.stdout.readline()
-#             if not line:
-#                 break
-#             stdout += line
-#             sys.stdout.write(line)
-#         sys.stdout.flush()
-#         while True:
-#             line = process.stderr.readline()
-#             if not line:
-#                 break
-#             stderr += line
-#             sys.stderr.write(stderr)
-#         sys.stderr.flush()
-    
-#     return stdout, stderr
+def compute(metadata, model_file_override=None):
+    if model_file_override is not None:
+        print('Overriding model file with: '+model_file_override)
 
+    selected_problems, selected_models = part_prompt(metadata.name, metadata.problem_data, metadata.model_data)
+    
+    print(selected_problems, selected_models)
 
-# def process_monitor(process, time_limit=None, memory_limit=None):
-#     status = 0
-#     message = 'process finished normally'
+    results = {}
 
-#     time.sleep(1)
-#     run_time = 1
-#     while process.poll() == None:
-#         sys.stdout.write('.')
-#         sys.stdout.flush()
-#         time.sleep(5)
-#         run_time += 5
-#         if time_limit != None and run_time > time_limit:
-#             status = 1
-#             message = 'runtime: '+str(run_time)+' timelimit: '+str(time_limit)+' (seconds) - killing process'
-#             process.terminate()
-#             process.wait()
-#             break
+    #submission needs empty dict for every assignment part
+    results.update({prob_data.sid : {} for prob_data in metadata.problem_data})
+    results.update({model_data.sid : {} for model_data in metadata.model_data})
 
-#     assert(process.returncode != None)
-#     return process.returncode, message
+    for model in selected_models:
+        if model_file_override != None:
+            model_file = model_file_override
+        else:
+            model_file = model.model_file
+        
+        if not os.path.isfile(model_file):
+            print('Unable to locate assignment file "'+model_file+'" in the current working directory.')
+            continue
+        
+        submission = get_source(model_file)
+        results[model.sid] = {'output':submission}
+
+    for problem in selected_problems:
+        if model_file_override != None:
+            model_file = model_file_override
+        else:
+            model_file = problem.model_file
+        
+        if not os.path.isfile(model_file):
+            print('Unable to locate assignment file "'+model_file+'" in the current working directory.')
+            continue
+
+        submission = output(problem, model_file)
+        if submission != None:
+            results[problem.sid] = {'output':submission}
+
+    return results
 
 
 def run_minizinc(process_id, model_file, data_file, solution_file=None, solve_time_limit=10000, mzn_time_limit=5000, all_solutions=False):
@@ -378,8 +224,9 @@ def last_solution(solution_stream):
         return solution_stream
     return mzn_solution.join(solutions[-2:])
 
-def output(problem, model_file=None, record_submission=False):
-    """Use student code to compute the output for test cases."""
+
+def output(problem, model_file=None):
+    '''Use student code to compute the output for test cases.'''
     
     if model_file == None:
         model_file = problem.model_file
@@ -388,9 +235,7 @@ def output(problem, model_file=None, record_submission=False):
 
     start = time.clock()
     try:
-        #stdout, stderr = run_minizinc(model_file, problem.input_file, time_limit=3600000)
         stdout, stderr = run_minizinc(process_id, model_file, problem.input_file, solve_time_limit=problem.runtime*1000, mzn_time_limit=3600000, all_solutions=True)
-        #stdout, stderr = run_minizinc(model_file, problem.input_file, time_limit=None)
     except Exception as e:
         print('running minizinc as a subprocess on input '+problem.input_file+' with model '+model_file+' raised an exception')
         print('try testing outside of this submission script')
@@ -401,14 +246,6 @@ def output(problem, model_file=None, record_submission=False):
     end = time.clock()
     
     solution = last_solution(stdout)
-    
-    # try:
-    #     solution.decode('utf-8')
-    # except UnicodeError:
-    #     print('Error: the submitted solution was not UTF-8 and will be skipped.')
-    #     print('Orginal: ')
-    #     print(solution)
-    #     return None
 
     print('For part: '+problem.name)
     print('Submitting: ')
@@ -416,66 +253,147 @@ def output(problem, model_file=None, record_submission=False):
 
     submission_string = solution.strip() + '\n' + str(end - start) + '\n' + 'command line submission'
 
-    if record_submission:
-        directory = '_'+problem.sid
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-
-        submission_file_name = directory+'/submission.sub'
-        print('writting submission file: '+submission_file_name)
-        submission_file = open(submission_file_name,'w')
-        submission_file.write(submission_string)
-        submission_file.close()
-
     return submission_string
 
 
-def main(argv):
-    metadata_file_override = None
-    credentials_file_override = None
-    model_file_override = None
-    record_submission = False
+def login_dialog(assignment_key, results, credentials_file_location = '_credentials'):
+    success = False
+    while not success:
+        login, token = login_prompt(credentials_file_location)
 
-    if len(argv) > 0:
-        for cmd_line_arg in argv:
-            if cmd_line_arg.startswith('-override='):
-                model_file_override = cmd_line_arg.split('=')[1].strip()
-                print('Overriding model file with: '+model_file_override)
+        code, responce = submit_solution(assignment_key, login, token, results)
 
-            if cmd_line_arg.startswith('-metadata='):
-                metadata_file_override = cmd_line_arg.split('=')[1].strip()
-                print('Overriding metadata file with: '+metadata_file_override)
+        print('\n== Coursera Responce ...')
+        #print(code)
+        print(responce)
+        
+        if code != 401:
+            success = True
+        else:
+            print('\ntry logging in again')
 
-            if cmd_line_arg.startswith('-credentials='):
-                credentials_file_override = cmd_line_arg.split('=')[1].strip()
-                print('Overriding credentials file with: '+credentials_file_override)
+def login_prompt(credentials_file_location):
+    '''Prompt the user for login credentials. Returns a tuple (login, token).'''
+    if os.path.isfile(credentials_file_location):
+        try:
+            with open(credentials_file_location, 'r') as metadata_file:
+                login = metadata_file.readline().strip()
+                token = metadata_file.readline().strip()
+                metadata_file.close()
+        except:
+            login, token = basic_prompt()
+    else:
+        login, token = basic_prompt()
+    return login, token
 
-            if cmd_line_arg.startswith('-record_submission'):
-                record_submission = True
-                print('Recording submission as file')
 
-    if metadata_file_override == None:
+def basic_prompt():
+    '''Prompt the user for login credentials. Returns a tuple (login, token).'''
+    login = input('User Name (e-mail address): ')
+    token = input('Submission Token (from the assignment page): ')
+    return login, token
+
+
+def submit_solution(assignment_key, email_address, token, results):
+    '''Submits a solution to the server. Returns (code, responce).'''
+    
+    print('\n== Connecting to Coursera ...')
+    print('Submitting %d of %d parts' % (sum(['output' in v for k,v in results.items()]), len(results)))
+
+    # build json datastructure
+    parts = {}
+    submission = {
+        'assignmentKey': assignment_key,  
+        'submitterEmail': email_address,  
+        'secret': token,
+        'parts': results
+    }
+
+    # send submission
+    req = Request(submitt_url)
+    req.add_header('Cache-Control', 'no-cache')
+    req.add_header('Content-type', 'application/json')
+
+    try:
+        res = urlopen(req, json.dumps(submission).encode('utf8'))
+    except HTTPError as e:
+        responce = json.loads(e.read().decode('utf8'))
+
+        if 'details' in responce and responce['details'] != None and \
+            'learnerMessage' in responce['details']:
+            return e.code, responce['details']['learnerMessage']
+        else:
+            return e.code, 'Unexpected response code, please contact the ' \
+                               'course staff.\nDetails: ' + responce['message']
+
+    code = res.code
+    responce = json.loads(res.read().decode('utf8'))
+
+    if code >= 200 and code <= 299:
+        return code, 'Your submission has been accepted and will be ' \
+                     'graded shortly.'
+
+    return code, 'Unexpected response code, please contact the '\
+                 'course staff.\nDetails: ' + responce
+
+
+
+def main(args):
+    if args.metadata is None:
         metadata = load_metadata()
     else:
-        metadata = load_metadata(metadata_file_override)
+        print('Overriding metadata file with: '+args.metadata)
+        metadata = load_metadata(args.metadata)
 
     print('==\n== '+metadata.name+' Solution Submission \n==')
     
-    if credentials_file_override == None:
-        login, token = login_prompt()
-    else:
-        login, token = login_prompt(credentials_file_override)
+    # compute dialog
+    results = compute(metadata, args.override)
 
-    if not login:
-        print('!! Submission Canceled')
+    if sum(['output' in v for k,v in results.items()]) <= 0:
         return
-    
-    submit(metadata, login, token, model_file_override, record_submission)
 
+    # store submissions if requested
+    if args.record_submission is not None:
+        print('Recording submission as files')
+        for sid, submission in results.items():
+            if 'output' in submission:
+                directory = '_'+sid
+                if not os.path.exists(directory):
+                    os.makedirs(directory)
+
+                submission_file_name = directory+'/submission.sub'
+                print('  writting submission file: '+submission_file_name)
+                with open(submission_file_name,'w') as submission_file:
+                    submission_file.write(submission['output'])
+                    submission_file.close()
+
+    # submit dialog
+    if args.credentials is None:
+        login_dialog(metadata.assignment_key, results)
+    else:
+        print('Overriding credentials file with: '+args.credentials)
+        login_dialog(metadata.assignment_key, results, args.credentials)
+
+
+import argparse
+def build_parser():
+    parser = argparse.ArgumentParser(
+        description='''The command line interface for Modeling Discrete 
+            Optimization assignment submission on the Coursera Platform.''',
+        epilog='''Please file bugs on github at: 
+        https://github.com/ccoffrin/coursera-mdo-submission/issues. If you 
+        would like to contribute to this tool's development, check it out at: 
+        https://github.com/ccoffrin/coursera-mdo-submission''')
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s '+version)
+    parser.add_argument('-o', '--override', help='overrides the model source file specified in the \'_coursera\' file')
+    parser.add_argument('-m', '--metadata', help='overrides the \'_coursera\' metadata file')
+    parser.add_argument('-c', '--credentials', help='overrides the \'_credentials\' credentials file')
+    parser.add_argument('-rs', '--record_submission', help='records the submission(s) as files', action='store_true')
+    return parser
 
 if __name__ == '__main__':
     import sys
-    main(sys.argv)
 
     try:
         cmd = [minizinc_cmd, '--help']
@@ -486,4 +404,6 @@ if __name__ == '__main__':
         print('details: ', e)
         quit()
 
+    parser = build_parser()
+    main(parser.parse_args())
 
