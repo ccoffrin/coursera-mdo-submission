@@ -215,6 +215,8 @@ def compute(metadata, model_file_override=None):
         if submission != None:
             results[problem.sid] = {'output':submission}
 
+    print('\n== Computations Complete ...')
+
     return results
 
 
